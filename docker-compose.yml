@@ -9,6 +9,8 @@ services:
     image: zookeeper:latest
     ports:
       - "2181:2181"
+    networks:
+      - streaming_network
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -21,7 +23,8 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
+    networks:
+      - streaming_network
 
   server:
     build:
