@@ -1,101 +1,122 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState } from "react";
+import { useSocket } from "./lib/useSocket";
+import toast from "react-hot-toast";
+import axios from "axios"; 
+import { useDispatch, useSelector } from "react-redux";
+import { addNotification } from "@/redux/notificationSlice";
+import { registerServiceWorker } from "./lib/registerServiceWorker";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const socket = useSocket("http://localhost:4000"); 
+  const notifications = useSelector((state) => state.notification.notifications);
+  const dispatch = useDispatch();
+  
+  const [message, setMessage] = useState("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
+  const handleClick = async () => {
+    try {
+      const res = await axios.post("http://localhost:4000/send-notification", {
+        message: message,
+      });
+      if (res.status === 200) {
+        toast.success("Notification sent!");
+      }
+    } catch (error) {
+      toast.error("Failed to send notification");
+      console.error("Error sending notification:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (socket) {
+      socket.on("NOTIFICATION", (data) => {
+        console.log("Received NOTIFICATION: ", data);
+        dispatch(addNotification(data));
+        
+        // Request permission and send push notification
+        if (Notification.permission === "granted") {
+          navigator.serviceWorker.ready.then(function(registration) {
+            registration.showNotification('New Notification', {
+              body: data.message,
+              icon: '/icon.png',
+              badge: '/badge.png'
+            });
+          });
+        } else if (Notification.permission !== "denied") {
+          Notification.requestPermission().then(function (permission) {
+            if (permission === "granted") {
+              navigator.serviceWorker.ready.then(function(registration) {
+                registration.showNotification('New Notification', {
+                  body: data.message,
+                  icon: '/icon.png',
+                  badge: '/badge.png'
+                });
+              });
+            }
+          });
+        }
+
+        toast.success(data.message);
+      });
+
+      return () => {
+        socket.off("NOTIFICATION");
+      };
+    }
+  }, [socket]);
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(async (registration) => {
+        try {
+          const response = await fetch('http://localhost:4000/vapidPublicKey');
+          const { publicKey } = await response.json();
+
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: publicKey
+          });
+
+          await fetch('http://localhost:4000/subscribe?socketId=' + socket.id, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(subscription),
+          });
+
+          console.log('Push notification subscription successful');
+        } catch (err) {
+          console.error('Error subscribing to push notifications:', err);
+        }
+      });
+    }
+  }, [socket]);
+
+  return (
+    <div className="flex flex-col justify-center items-center h-screen">
+      <div>
+        <h1>Notification</h1>
+        <input
+          type="text"
+          placeholder="Type your message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)} 
+          className="border-2 m-2 p-2"
+        />
+        <button onClick={handleClick}>Send Notification</button>
+      </div>
+
+      <ul className="">
+        {notifications.map((notification, index) => (
+          <li className="border-2 m-2 p-2 text-xl shadow-sm" key={index}>{notification.message}</li>
+        ))}
+      </ul>
     </div>
   );
 }

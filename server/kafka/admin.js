@@ -1,7 +1,5 @@
 import { kafka } from "./client.js";
 
-
-
 async function admin() {
   console.log("Connecting Admin...");
   const admin = kafka.admin();

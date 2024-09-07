@@ -44,20 +44,20 @@ services:
     networks:
       - streaming_network
 
-  client:
-    build:
-      context: ./client
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./client:/usr/src/app
-      - /usr/src/app/node_modules
-    environment:
-      NODE_ENV: development
-    depends_on:
-      - server
-    networks:
-      - streaming_network
+  # client:
+  #   build:
+  #     context: ./client
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./client:/usr/src/app
+  #     - /usr/src/app/node_modules
+  #   environment:
+  #     NODE_ENV: development
+  #   depends_on:
+  #     - server
+  #   networks:
+  #     - streaming_network
 
   mongo:
     image: mongo:latest

@@ -12,23 +12,5 @@ const connectDB = (url) => {
 };
 
 
-const emitEvent = (req, event, users, data) => {
-  try {
-    const io = req.app.get("io");
-    if (!io) throw new Error("Socket.io instance not found");
 
-    const userSockets = getSockets(users);
-    if (userSockets.length === 0) {
-      console.warn(`No valid socket IDs found for event ${event} and users: ${users.join(", ")}`);
-      return;
-    }
-
-    io.to(userSockets).emit(event, data);
-    console.log(`Event ${event} emitted to users: ${users.join(", ")}`);
-  } catch (error) {
-    console.error(`Failed to emit event ${event}:`, error);
-  }
-};
-
-
-export { connectDB, emitEvent };
+export { connectDB };
